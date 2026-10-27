@@ -1,6 +1,8 @@
 <meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-QiZ290JZwrZfBuzA7AmkwZyee1fEqYPSDq06rsqcb3k='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data:; connect-src https://mtnhlilpocfxvmquvhgn.supabase.co; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>HODL Flap</title>
+<title>Flappy Titty</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=Rubik:wght@400;600&display=swap">
@@ -64,14 +66,14 @@ button:focus-visible{outline:3px solid var(--cream);outline-offset:2px}
 </style>
 
 <div class="wrap">
-  <canvas id="game" tabindex="0" aria-label="HODL Flap game. Tap, click or press space to flap."></canvas>
+  <canvas id="game" tabindex="0" aria-label="Flappy Titty game. Tap, click or press space to flap."></canvas>
   <div class="hud" id="hud" hidden>0</div>
 
   <div class="panel" id="start">
-    <h1>HODL<br>FLAP</h1>
+    <h1>FLAPPY<br>TITTY</h1>
     <p>Tap or press space to flap. ₿ coins are +5.</p>
     <form class="namebox" id="nameForm" autocomplete="off">
-      <input id="nameInput" maxlength="16" placeholder="Your name" aria-label="Your name for the leaderboard" required>
+      <input id="nameInput" maxlength="16" pattern="[A-Za-z0-9 _\-]{1,16}" placeholder="Your name" aria-label="Your name for the leaderboard" required>
       <button type="submit">Play</button>
     </form>
     <div class="err" id="nameErr"></div>
@@ -92,19 +94,19 @@ button:focus-visible{outline:3px solid var(--cream);outline-offset:2px}
     <div class="tipcard">
       <h2 id="tipTitle">Tip the dev</h2>
       <p>Enjoying the game? Send any amount of SOL to this address.</p>
-      <div id="qr" aria-label="QR code of the SOL address"></div>
+      <p class="small"><b>Check it starts 9swu and ends etqaj.</b></p>
       <div class="addr" id="addr">9swuf51nZT36AyLSPBmaF8wy9V8aXKhrevHVdfcetqaj</div>
       <div class="tiprow">
         <button type="button" id="copyAddr">Copy address</button>
         <a href="solana:9swuf51nZT36AyLSPBmaF8wy9V8aXKhrevHVdfcetqaj" id="walletLink">Open wallet</a>
       </div>
       <p class="small" id="copyMsg">Tips are voluntary and don't affect your score.</p>
+      <p class="small">This game never asks you to connect a wallet, sign anything or claim an airdrop. Anyone who DMs you about prizes or giveaways from Flappy Titty is a scammer.</p>
       <button type="button" class="tipclose" id="tipClose">Close</button>
     </div>
   </div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script>
 /* ===== Leaderboard settings: paste your Supabase values here ===== */
 const SUPABASE_URL = "https://mtnhlilpocfxvmquvhgn.supabase.co";      // e.g. https://abcd1234.supabase.co
@@ -126,6 +128,8 @@ const SUPABASE_KEY = "sb_publishable_tmWbxtHqL496axu-6l-4Hg_fM-4C1Yd"; // the pu
   const showBest = () => { $('bestOver').textContent = 'Your best: ' + best; };
   showBest();
 
+  const BLOCKED = /(airdrop|claim|giveaway|admin|official|support|wallet|seed|http|www|telegram|discord|whatsapp|fuck|shit|cunt|bitch|nigg|fagg|rape|nazi|hitler)/;
+
   // ---------- leaderboard (Supabase REST) ----------
   const LB_ON = /^https:\/\/.+\.supabase\.co\/?$/.test(SUPABASE_URL) && !SUPABASE_KEY.startsWith('PASTE');
   const base = SUPABASE_URL.replace(/\/$/, '') + '/rest/v1/';
@@ -145,16 +149,19 @@ const SUPABASE_KEY = "sb_publishable_tmWbxtHqL496axu-6l-4Hg_fM-4C1Yd"; // the pu
   }
   async function submitScore(score){
     if (!LB_ON || !playerName || score <= 0) return loadBoard();
+    let saved = false;
     try {
-      await fetch(base + 'scores', { method:'POST', headers: { ...headers(), Prefer:'return=minimal' },
+      const r = await fetch(base + 'scores', { method:'POST', headers: { ...headers(), Prefer:'return=minimal' },
         body: JSON.stringify({ name: playerName, score }) });
+      saved = r.ok;
     } catch(e) {}
-    loadBoard();
+    await loadBoard();
+    if (!saved){ const m = document.createElement('div'); m.className = 'msg'; m.textContent = 'This score wasn\'t saved. Wait a few seconds between runs.'; $('boardOver').appendChild(m); }
   }
   function renderBoard(rows, msg){
     for (const el of [$('boardStart'), $('boardOver')]){
       el.textContent = '';
-      const h = document.createElement('h2'); h.textContent = 'TOP 10 HODLERS'; el.appendChild(h);
+      const h = document.createElement('h2'); h.textContent = 'TOP 10 FLAPPERS'; el.appendChild(h);
       if (!rows || !rows.length){
         const m = document.createElement('div'); m.className = 'msg'; m.textContent = msg || 'No scores yet. Be the first.'; el.appendChild(m); continue;
       }
@@ -173,12 +180,9 @@ const SUPABASE_KEY = "sb_publishable_tmWbxtHqL496axu-6l-4Hg_fM-4C1Yd"; // the pu
 
   // ---------- tip jar ----------
   const SOL_ADDRESS = "9swuf51nZT36AyLSPBmaF8wy9V8aXKhrevHVdfcetqaj";
-  let qrMade = false;
   const tip = $('tip');
   document.querySelectorAll('[data-tip]').forEach(b => b.addEventListener('click', () => {
     tip.hidden = false;
-    if (!qrMade && window.QRCode){ try { new QRCode($('qr'), { text: 'solana:' + SOL_ADDRESS, width: 180, height: 180, correctLevel: QRCode.CorrectLevel.M }); qrMade = true; } catch(e) {} }
-    if (!window.QRCode) $('qr').hidden = true;
     $('copyAddr').focus();
   }));
   $('tipClose').addEventListener('click', () => { tip.hidden = true; });
@@ -212,6 +216,8 @@ const SUPABASE_KEY = "sb_publishable_tmWbxtHqL496axu-6l-4Hg_fM-4C1Yd"; // the pu
     e.preventDefault();
     const n = $('nameInput').value.trim().replace(/\s+/g,' ').slice(0,16);
     if (!n){ $('nameErr').textContent = 'Type a name to go on the leaderboard.'; return; }
+    if (!/^[A-Za-z0-9 _-]{1,16}$/.test(n)){ $('nameErr').textContent = 'Use only letters, numbers, spaces, - or _.'; return; }
+    if (BLOCKED.test(n.toLowerCase())){ $('nameErr').textContent = 'That name isn\'t allowed. Try another.'; return; }
     $('nameErr').textContent = '';
     if (n !== playerName){ playerName = n; best = 0; try { localStorage.setItem('hodlflap-name', n); localStorage.setItem('hodlflap-best', 0); } catch(e) {} showBest(); }
     begin();
