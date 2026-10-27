@@ -1,8 +1,20 @@
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-QiZ290JZwrZfBuzA7AmkwZyee1fEqYPSDq06rsqcb3k='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data:; connect-src https://mtnhlilpocfxvmquvhgn.supabase.co; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-39TYfBqqS+VDnVbLbjew6VNcRjfiMwAmpELn4G+7hEY='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data:; connect-src https://mtnhlilpocfxvmquvhgn.supabase.co; base-uri 'none'; form-action 'none'; object-src 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flappy Titty</title>
+<meta name="description" content="Dodge the candles, stack the ₿, and top the live leaderboard. Free to play in your browser.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Flappy Titty">
+<meta property="og:description" content="Dodge the candles, stack the ₿, and top the live leaderboard. Free to play.">
+<meta property="og:url" content="https://smopg.github.io/btcflap/">
+<meta property="og:image" content="https://smopg.github.io/btcflap/preview.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Flappy Titty">
+<meta name="twitter:description" content="Dodge the candles, stack the ₿, and top the live leaderboard. Free to play.">
+<meta name="twitter:image" content="https://smopg.github.io/btcflap/preview.png">
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=Rubik:wght@400;600&display=swap">
@@ -85,6 +97,7 @@ button:focus-visible{outline:3px solid var(--cream);outline-offset:2px}
     <h1>REKT</h1>
     <span class="big" id="final">Score 0</span>
     <span class="tag" id="bestOver">Your best: 0</span>
+    <p id="claimLine" hidden>Claim code: <b id="claimCode" style="font-family:ui-monospace,Menlo,monospace;letter-spacing:.12em;color:var(--gold)"></b><br><span style="font-size:12px;opacity:.8">Top today? Keep this code in your recording.</span></p>
     <div class="board" id="boardOver"></div>
     <button type="button" id="again">Play again</button>
     <button type="button" class="tipbtn" data-tip>Tip the dev ◎ SOL</button>
@@ -147,16 +160,16 @@ const SUPABASE_KEY = "sb_publishable_tmWbxtHqL496axu-6l-4Hg_fM-4C1Yd"; // the pu
       renderBoard(await r.json());
     } catch(e){ renderBoard(null, "Couldn't load scores. Check your connection."); }
   }
-  async function submitScore(score){
+  async function submitScore(score, code){
     if (!LB_ON || !playerName || score <= 0) return loadBoard();
     let saved = false;
     try {
       const r = await fetch(base + 'scores', { method:'POST', headers: { ...headers(), Prefer:'return=minimal' },
-        body: JSON.stringify({ name: playerName, score }) });
+        body: JSON.stringify({ name: playerName, score, code }) });
       saved = r.ok;
     } catch(e) {}
     await loadBoard();
-    if (!saved){ const m = document.createElement('div'); m.className = 'msg'; m.textContent = 'This score wasn\'t saved. Wait a few seconds between runs.'; $('boardOver').appendChild(m); }
+    if (!saved){ $('claimLine').hidden = true; const m = document.createElement('div'); m.className = 'msg'; m.textContent = 'This score wasn\'t saved. Wait a few seconds between runs.'; $('boardOver').appendChild(m); }
   }
   function renderBoard(rows, msg){
     for (const el of [$('boardStart'), $('boardOver')]){
@@ -235,13 +248,21 @@ const SUPABASE_KEY = "sb_publishable_tmWbxtHqL496axu-6l-4Hg_fM-4C1Yd"; // the pu
     if (e.code === 'Space' || e.code === 'ArrowUp'){ e.preventDefault(); flap(); }
   });
 
+  function makeCode(){
+    const abc = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789', a = new Uint32Array(6);
+    crypto.getRandomValues(a);
+    return Array.from(a, n => abc[n % abc.length]).join('');
+  }
   function die(){
     state = 'over'; deadAt = t;
     if (score > best){ best = score; try { localStorage.setItem('hodlflap-best', best); } catch(e) {} }
     showBest();
     $('final').textContent = 'Score ' + score;
     hud.hidden = true; overP.hidden = false;
-    submitScore(score);
+    const code = makeCode();
+    $('claimCode').textContent = code;
+    $('claimLine').hidden = !(LB_ON && playerName && score > 0);
+    submitScore(score, code);
   }
 
   function update(dt){
